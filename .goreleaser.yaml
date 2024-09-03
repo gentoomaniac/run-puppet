@@ -3,8 +3,8 @@ before:
     - go mod download
 builds:
   - main: .
-    id: "template-application"
-    binary: "template-application"
+    id: "run-puppet"
+    binary: "run-puppet"
     ldflags:
       - -s -w
       - -X 'main.version={{.Version}}'
@@ -25,12 +25,12 @@ archives:
   - id: bin
     format: binary
     builds:
-    - template-application
+    - run-puppet
     name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
   - id: tar
     format: tar.gz
     builds:
-    - template-application
+    - run-puppet
 
 checksum:
   name_template: 'sha256sums.txt'

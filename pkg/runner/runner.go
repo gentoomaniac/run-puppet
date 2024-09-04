@@ -2,9 +2,12 @@ package runner
 
 import (
 	"context"
+	"math/rand/v2"
 	"os"
+	"time"
 
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
 	git "github.com/go-git/go-git/v5"
@@ -101,7 +104,9 @@ func (r *RunPuppet) Run() error {
 	ctx, span := r.options.tracer.Start(r.options.ctx, "runner.Run()")
 	defer span.End()
 
-	//TODO: add random delay
+	if !r.options.now {
+		delay(ctx, r.options.tracer)
+	}
 
 	if r.options.clone {
 		err := cloneRepo(ctx, r.options.tracer, r.options.localRepoPath, r.options.remoteRepoUrl)
@@ -112,7 +117,14 @@ func (r *RunPuppet) Run() error {
 
 	return nil
 }
+func delay(ctx context.Context, tracer trace.Tracer) {
+	_, span := tracer.Start(ctx, "delay()")
+	defer span.End()
 
+	delay := time.Duration(rand.IntN(5)) * time.Second
+	span.SetAttributes(attribute.Int("secondsDelay", int(delay.Seconds())))
+	time.Sleep(delay)
+}
 func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remoteUrl string) error {
 	_, span := tracer.Start(ctx, "cloneRepo()")
 	defer span.End()

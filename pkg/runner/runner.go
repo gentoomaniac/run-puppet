@@ -1,9 +1,11 @@
 package runner
 
 import (
+	"context"
 	"os"
 
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/trace"
 
 	git "github.com/go-git/go-git/v5"
 )
@@ -20,6 +22,8 @@ type runPuppetOptions struct {
 	clone         bool
 	now           bool
 	noop          bool
+	ctx           context.Context
+	tracer        trace.Tracer
 }
 
 type RunPuppetOption func(o *runPuppetOptions)
@@ -65,6 +69,17 @@ func WithNoop(noop bool) RunPuppetOption {
 	}
 }
 
+func WithContext(ctx context.Context) RunPuppetOption {
+	return func(o *runPuppetOptions) {
+		o.ctx = ctx
+	}
+}
+func WithTracer(tracer trace.Tracer) RunPuppetOption {
+	return func(o *runPuppetOptions) {
+		o.tracer = tracer
+	}
+}
+
 func New(opts ...RunPuppetOption) RunPuppet {
 	opt := &runPuppetOptions{
 		puppetBranch:  "main",
@@ -81,22 +96,38 @@ func New(opts ...RunPuppetOption) RunPuppet {
 }
 
 func (r *RunPuppet) Run() error {
-	log.Debug().Msg("run puppet")
+	log.Debug().Msg("runner")
+
+	ctx, span := r.options.tracer.Start(r.options.ctx, "runner.Run()")
+	defer span.End()
+
+	//TODO: add random delay
 
 	if r.options.clone {
-		if err := os.RemoveAll(r.options.localRepoPath); err != nil {
-			return err
-		}
-
-		_, err := git.PlainClone(r.options.localRepoPath, false, &git.CloneOptions{
-			URL:      r.options.remoteRepoUrl,
-			Progress: os.Stdout,
-		})
-
+		err := cloneRepo(ctx, r.options.tracer, r.options.localRepoPath, r.options.remoteRepoUrl)
 		if err != nil {
 			return err
 		}
 	}
 
+	return nil
+}
+
+func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remoteUrl string) error {
+	_, span := tracer.Start(ctx, "cloneRepo()")
+	defer span.End()
+
+	if err := os.RemoveAll(localPath); err != nil {
+		return err
+	}
+
+	_, err := git.PlainClone(localPath, false, &git.CloneOptions{
+		URL:      remoteUrl,
+		Progress: os.Stdout,
+	})
+
+	if err != nil {
+		return err
+	}
 	return nil
 }

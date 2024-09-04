@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
+
 	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog/log"
 
 	"github.com/gentoomaniac/gocli"
 	"github.com/gentoomaniac/logging"
-
 	"github.com/gentoomaniac/run-puppet/pkg/runner"
+
+	"go.opentelemetry.io/otel"
 )
 
 var (
@@ -34,7 +37,21 @@ var cli struct {
 }
 
 func main() {
-	ctx := kong.Parse(&cli, kong.UsageOnError(), kong.Vars{
+	ctx := context.Background()
+
+	consoleTraceExporter, err := newTraceExporter()
+	if err != nil {
+		panic("Failed get console exporter.")
+	}
+	tracerProvider := newTraceProvider(consoleTraceExporter)
+	defer tracerProvider.Shutdown(ctx)
+	otel.SetTracerProvider(tracerProvider)
+
+	tracer := otel.Tracer("run-puppet")
+	ctx, span := tracer.Start(context.Background(), "main")
+	defer span.End()
+
+	_ = kong.Parse(&cli, kong.UsageOnError(), kong.Vars{
 		"version": version,
 		"commit":  commit,
 		"binName": binName,
@@ -51,12 +68,12 @@ func main() {
 		runner.WithClone(cli.Clone),
 		runner.WithNow(cli.Now),
 		runner.WithNoop(cli.Noop),
+		runner.WithContext(ctx),
+		runner.WithTracer(tracer),
 	)
 
 	if err := rp.Run(); err != nil {
 		log.Error().Err(err).Msg("puppet run failed")
-		ctx.Exit(1)
+		return
 	}
-
-	ctx.Exit(0)
 }

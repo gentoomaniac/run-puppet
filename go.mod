@@ -3,7 +3,7 @@ module github.com/gentoomaniac/run-puppet
 go 1.22
 
 require (
-	github.com/alecthomas/kong v0.4.0
+	github.com/alecthomas/kong v0.9.0
 	github.com/gentoomaniac/gocli v0.0.0-20210503153723-bf433779ccf3
 	github.com/gentoomaniac/logging v0.0.2
 	github.com/go-git/go-git/v5 v5.12.0
@@ -32,7 +32,6 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/skeema/knownhosts v1.2.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect

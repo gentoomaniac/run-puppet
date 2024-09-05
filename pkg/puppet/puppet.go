@@ -1,13 +1,21 @@
 package puppet
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
-func RunPuppetApply(binPath string, manifestPath string, vaultToken string, noop bool, syslog bool) error {
+func RunPuppetApply(ctx context.Context, tracer trace.Tracer, binPath string, manifestPath string, vaultToken string, noop bool, syslog bool) error {
+	_, span := tracer.Start(ctx, "puppet.RunPuppetApply()")
+	defer span.End()
+	span.SetAttributes(attribute.Bool("noop", noop))
+
 	args := []string{"apply", "--config", path.Join(manifestPath, "puppet.conf"), "-vvvt", path.Join(manifestPath, "manifests/site.pp")}
 	if noop {
 		args = append(args, "--noop")

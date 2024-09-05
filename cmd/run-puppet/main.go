@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"net/url"
+	"os"
 
 	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog/log"
@@ -24,10 +26,13 @@ var (
 var cli struct {
 	logging.LoggingConfig
 
-	BinPath       string `help:"Path to puppet binary" default:"/opt/puppetlabs/bin/puppet"`
-	LocalRepoPath string `help:"local path for the checked out puppet manifests" default:"/var/lib/puppet-repo"`
-	RemoteRepoUrl string `help:"puppet repository to use" required:""`
-	PuppetBranch  string `help:"puppet branch to use" default:"master"`
+	BinPath       string   `help:"Path to puppet binary" default:"/opt/puppetlabs/bin/puppet"`
+	LocalRepoPath string   `help:"local path for the checked out puppet manifests" default:"/var/lib/puppet-repo"`
+	RemoteRepoUrl *url.URL `help:"puppet repository to use" default:"https://github.com/gentoomaniac/puppet.git"`
+	VaultUrl      *url.URL `help:"url of the vault instance" default:"https://vault.srv.gentoomaniac.net"`
+	RoleIdFile    *os.File `help:"path to the vault approle app id file" default:"/etc/vault_role_id"`
+	SecretIdFile  *os.File `help:"path to the vault approle secret id file" default:"/etc/vault_secret_id"`
+	PuppetBranch  string   `help:"puppet branch to use" default:"master"`
 
 	Clone bool `help:"do a fresh clone of the manifest repository" default:"true" negatable:""`
 	Now   bool `help:"skip the random delay" default:"false"`
@@ -70,6 +75,9 @@ func main() {
 		runner.WithNoop(cli.Noop),
 		runner.WithContext(ctx),
 		runner.WithTracer(tracer),
+		runner.WithVaultUrl(cli.VaultUrl),
+		runner.WithRoleIdFile(cli.RoleIdFile),
+		runner.WithSecretIdFile(cli.SecretIdFile),
 	)
 
 	if err := rp.Run(); err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog/log"
@@ -13,6 +14,8 @@ import (
 	"github.com/gentoomaniac/run-puppet/pkg/runner"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 var (
@@ -42,13 +45,24 @@ var cli struct {
 }
 
 func main() {
-	ctx := context.Background()
-
-	consoleTraceExporter, err := newTraceExporter()
-	if err != nil {
-		panic("Failed get console exporter.")
+	if _, err := os.Stat("/etc/puppet_disable"); err == nil {
+		cli.Noop = true
+		log.Info().Msg("`/etc/puppet_disable` found. Running with --noop.")
 	}
-	tracerProvider := newTraceProvider(consoleTraceExporter)
+
+	ctx := context.Background()
+	tracerProvider := trace.NewTracerProvider()
+
+	if cli.Debug {
+		stdoutExporter, err := stdouttrace.New()
+		if err != nil {
+			panic("Failed get console exporter.")
+		}
+		tracerProvider = trace.NewTracerProvider(
+			trace.WithBatcher(stdoutExporter,
+				trace.WithBatchTimeout(time.Second)))
+	}
+
 	defer tracerProvider.Shutdown(ctx)
 	otel.SetTracerProvider(tracerProvider)
 
@@ -56,13 +70,18 @@ func main() {
 	ctx, span := tracer.Start(context.Background(), "main")
 	defer span.End()
 
-	_ = kong.Parse(&cli, kong.UsageOnError(), kong.Vars{
+	kctx := kong.Parse(&cli, kong.UsageOnError(), kong.Vars{
 		"version": version,
 		"commit":  commit,
 		"binName": binName,
 		"builtBy": builtBy,
 		"date":    date,
 	})
+	kctx.Exit = func(code int) {
+		tracerProvider.Shutdown(ctx)
+		defer span.End()
+	}
+
 	logging.Setup(&cli.LoggingConfig)
 
 	rp := runner.New(
@@ -80,8 +99,6 @@ func main() {
 		runner.WithSecretIdFile(cli.SecretIdFile),
 	)
 
-	if err := rp.Run(); err != nil {
-		log.Error().Err(err).Msg("puppet run failed")
-		return
-	}
+	code := rp.Run()
+	kctx.Exit(code)
 }

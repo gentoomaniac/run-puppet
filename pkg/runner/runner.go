@@ -76,6 +76,7 @@ func WithNow(now bool) RunPuppetOption {
 		o.now = now
 	}
 }
+
 func WithNoop(noop bool) RunPuppetOption {
 	return func(o *runPuppetOptions) {
 		o.noop = noop
@@ -87,6 +88,7 @@ func WithContext(ctx context.Context) RunPuppetOption {
 		o.ctx = ctx
 	}
 }
+
 func WithTracer(tracer trace.Tracer) RunPuppetOption {
 	return func(o *runPuppetOptions) {
 		o.tracer = tracer
@@ -98,11 +100,13 @@ func WithVaultUrl(url *url.URL) RunPuppetOption {
 		o.vaultUrl = url
 	}
 }
+
 func WithRoleIdFile(file *os.File) RunPuppetOption {
 	return func(o *runPuppetOptions) {
 		o.vaultRoleIdFile = file
 	}
 }
+
 func WithSecretIdFile(file *os.File) RunPuppetOption {
 	return func(o *runPuppetOptions) {
 		o.vaultSecretIdFile = file
@@ -124,7 +128,7 @@ func New(opts ...RunPuppetOption) RunPuppet {
 	}
 }
 
-func (r *RunPuppet) Run() error {
+func (r *RunPuppet) Run() int {
 	log.Debug().Msg("runner")
 
 	ctx, span := r.options.tracer.Start(r.options.ctx, "runner.Run()")
@@ -140,12 +144,13 @@ func (r *RunPuppet) Run() error {
 
 	vaultToken := getVaultToken(ctx, r.options.tracer, r.options.vaultUrl, r.options.vaultRoleIdFile, r.options.vaultSecretIdFile)
 
-	err := puppet.RunPuppetApply(ctx, r.options.tracer, r.options.binPath, r.options.localRepoPath, vaultToken, r.options.noop, !r.options.now)
+	code, err := puppet.RunPuppetApply(ctx, r.options.tracer, r.options.binPath, r.options.localRepoPath, vaultToken, r.options.noop, !r.options.now)
 	if err != nil {
-		log.Panic().Err(err).Msg("executing puppet failed")
+		log.Error().Err(err).Msg("executing puppet failed")
+		return -1
 	}
 
-	return nil
+	return code
 }
 
 func getVaultToken(ctx context.Context, tracer trace.Tracer, vaultUrl *url.URL, appIdFile *os.File, secretIdFile *os.File) string {
@@ -194,7 +199,6 @@ func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remot
 		URL:      remoteUrl.String(),
 		Progress: os.Stdout,
 	})
-
 	if err != nil {
 		log.Panic().Err(err).Msg("failed clonig repo")
 	}

@@ -92,7 +92,7 @@ func main() {
 		hostname, _ := os.Hostname()
 		span.SetAttributes(attribute.String("hostname", hostname))
 		span.SetAttributes(attribute.Int("exitCode", code))
-		defer span.End()
+		span.End()
 		tracerProvider.Shutdown(ctx)
 		os.Exit(code)
 	}

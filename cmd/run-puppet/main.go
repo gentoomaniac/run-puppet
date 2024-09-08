@@ -89,6 +89,8 @@ func main() {
 	defer span.End()
 
 	kctx.Exit = func(code int) {
+		hostname, _ := os.Hostname()
+		span.SetAttributes(attribute.String("hostname", hostname))
 		span.SetAttributes(attribute.Int("exitCode", code))
 		defer span.End()
 		tracerProvider.Shutdown(ctx)

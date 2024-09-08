@@ -1,7 +1,7 @@
 package logging
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 
 	"log"
@@ -31,6 +31,6 @@ func Setup(config *LoggingConfig) {
 	} else {
 		zerolog.SetGlobalLevel(zerolog.Disabled)
 		log.SetFlags(0)
-		log.SetOutput(ioutil.Discard)
+		log.SetOutput(io.Discard)
 	}
 }

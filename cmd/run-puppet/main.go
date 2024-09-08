@@ -17,7 +17,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 var (
@@ -72,25 +74,33 @@ func main() {
 	} else {
 		exp, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(cli.OtelEndpointUrl.String()))
 		if err != nil {
-			log.Error().Err(err).Msg("faild creating http trace exporter")
+			log.Fatal().Err(err).Msg("faild creating http trace exporter")
 		}
 
 		exporter = exp
 	}
+
+	hostname, _ := os.Hostname()
+	traceRes, err := resource.New(ctx,
+		resource.WithAttributes(semconv.ServiceName(hostname)),
+	)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed setting service name")
+	}
+
 	tracerProvider := trace.NewTracerProvider(
 		trace.WithBatcher(exporter,
-			trace.WithBatchTimeout(time.Second)))
+			trace.WithBatchTimeout(time.Second)),
+		trace.WithResource(traceRes))
 
 	defer tracerProvider.Shutdown(ctx)
 	otel.SetTracerProvider(tracerProvider)
 
 	tracer := otel.Tracer("run-puppet")
-	ctx, span := tracer.Start(context.Background(), "main")
+	ctx, span := tracer.Start(context.Background(), "run-puppet")
 	defer span.End()
 
 	kctx.Exit = func(code int) {
-		hostname, _ := os.Hostname()
-		span.SetAttributes(attribute.String("hostname", hostname))
 		span.SetAttributes(attribute.Int("exitCode", code))
 		span.End()
 		tracerProvider.Shutdown(ctx)

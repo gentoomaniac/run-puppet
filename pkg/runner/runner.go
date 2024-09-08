@@ -129,8 +129,6 @@ func New(opts ...RunPuppetOption) RunPuppet {
 }
 
 func (r *RunPuppet) Run() int {
-	log.Debug().Msg("runner")
-
 	ctx, span := r.options.tracer.Start(r.options.ctx, "runner.Run()")
 	defer span.End()
 

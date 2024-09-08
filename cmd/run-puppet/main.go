@@ -90,8 +90,8 @@ func main() {
 
 	kctx.Exit = func(code int) {
 		span.SetAttributes(attribute.Int("exitCode", code))
-		tracerProvider.Shutdown(ctx)
 		defer span.End()
+		tracerProvider.Shutdown(ctx)
 		os.Exit(code)
 	}
 

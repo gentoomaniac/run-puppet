@@ -139,7 +139,11 @@ func (r *RunPuppet) Run() int {
 	}
 
 	if r.options.clone {
-		cloneRepo(ctx, r.options.tracer, r.options.localRepoPath, r.options.remoteRepoUrl)
+		err := cloneRepo(ctx, r.options.tracer, r.options.localRepoPath, r.options.remoteRepoUrl)
+		if err != nil {
+			log.Error().Err(err).Msg("failed cloning puppet repo")
+			return -1
+		}
 	}
 
 	vaultToken := getVaultToken(ctx, r.options.tracer, r.options.vaultUrl, r.options.vaultRoleIdFile, r.options.vaultSecretIdFile)
@@ -186,13 +190,13 @@ func delay(ctx context.Context, tracer trace.Tracer) {
 	time.Sleep(delay)
 }
 
-func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remoteUrl *url.URL) {
+func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remoteUrl *url.URL) error {
 	_, span := tracer.Start(ctx, "runner.cloneRepo()")
 	defer span.End()
 	span.SetAttributes(attribute.String("remoteUrl", remoteUrl.String()))
 
 	if err := os.RemoveAll(localPath); err != nil {
-		log.Panic().Err(err).Msg("failed deleting local repo folder")
+		return err
 	}
 
 	_, err := git.PlainClone(localPath, false, &git.CloneOptions{
@@ -200,6 +204,8 @@ func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remot
 		Progress: os.Stdout,
 	})
 	if err != nil {
-		log.Panic().Err(err).Msg("failed clonig repo")
+		return err
 	}
+
+	return nil
 }

@@ -1,8 +1,10 @@
+version: 2
+project_name: run-puppet
 before:
   hooks:
     - go mod download
 builds:
-  - main: .
+  - main: ./cmd/run-puppet
     id: "run-puppet"
     binary: "run-puppet"
     ldflags:
@@ -16,7 +18,6 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - darwin
     goarch:
       - amd64
       - arm64
@@ -37,7 +38,7 @@ checksum:
   algorithm: sha256
 
 snapshot:
-  name_template: "snapshot"
+  version_template: "{{ incpatch .Version }}-devel"
 
 changelog:
   sort: asc
@@ -48,3 +49,11 @@ changelog:
       - '^hack:'
       - '^chore:'
       - '^Merge pull request'
+
+nfpms:
+- maintainer: Marco Siebecke <marco@siebecke.se>
+  description: Automation for masterless puppet runs
+  homepage: https://github.com/gentoomaniac/run-puppet
+  license: MIT
+  formats:
+  - deb

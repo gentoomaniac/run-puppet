@@ -11,6 +11,7 @@ import (
 	"github.com/gentoomaniac/run-puppet/pkg/vault"
 
 	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -137,7 +138,7 @@ func (r *RunPuppet) Run() int {
 	}
 
 	if r.options.clone {
-		err := cloneRepo(ctx, r.options.tracer, r.options.localRepoPath, r.options.remoteRepoUrl)
+		err := cloneRepo(ctx, r.options.tracer, r.options.localRepoPath, r.options.remoteRepoUrl, r.options.puppetBranch)
 		if err != nil {
 			log.Error().Err(err).Msg("failed cloning puppet repo")
 			return -1
@@ -188,7 +189,7 @@ func delay(ctx context.Context, tracer trace.Tracer) {
 	time.Sleep(delay)
 }
 
-func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remoteUrl *url.URL) error {
+func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remoteUrl *url.URL, branch string) error {
 	_, span := tracer.Start(ctx, "runner.cloneRepo()")
 	defer span.End()
 	span.SetAttributes(attribute.String("remoteUrl", remoteUrl.String()))
@@ -198,8 +199,11 @@ func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remot
 	}
 
 	_, err := git.PlainClone(localPath, false, &git.CloneOptions{
-		URL:      remoteUrl.String(),
-		Progress: os.Stdout,
+		URL:           remoteUrl.String(),
+		Progress:      os.Stdout,
+		Depth:         1,
+		SingleBranch:  true,
+		ReferenceName: plumbing.NewBranchReferenceName(branch),
 	})
 	if err != nil {
 		return err

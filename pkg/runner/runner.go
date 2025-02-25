@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	vaultIdByteSize = 37
+	vaultIdByteSize    = 37
+	randomDelaySeconds = 5 * 60
 )
 
 type RunPuppet struct {
@@ -194,7 +195,7 @@ func delay(ctx context.Context, tracer trace.Tracer) {
 	_, span := tracer.Start(ctx, "runner.delay()")
 	defer span.End()
 
-	delay := time.Duration(rand.IntN(5)) * time.Second
+	delay := time.Duration(rand.IntN(randomDelaySeconds)) * time.Second
 	span.SetAttributes(attribute.Int("delaySeconds", int(delay.Seconds())))
 	time.Sleep(delay)
 	span.SetStatus(codes.Ok, "delay finished")

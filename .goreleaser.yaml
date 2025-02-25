@@ -1,4 +1,9 @@
 version: 2
+
+env:
+  - GITHUB_WORKFLOW={{ if index .Env "GITHUB_WORKFLOW"  }}{{ .Env.GITHUB_WORKFLOW }}{{ else }}unknown{{ end }}
+  - GITHUB_RUN_ID={{ if index .Env "GITHUB_RUN_ID"  }}{{ .Env.GITHUB_RUN_ID }}{{ else }}unknown{{ end }}
+
 project_name: run-puppet
 before:
   hooks:
@@ -24,12 +29,12 @@ builds:
 
 archives:
   - id: bin
-    format: binary
+    formats: binary
     builds:
     - run-puppet
     name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}"
   - id: tar
-    format: tar.gz
+    formats: tar.gz
     builds:
     - run-puppet
 

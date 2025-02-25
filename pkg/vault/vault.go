@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/vault-client-go/schema"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -22,6 +23,7 @@ func GetToken(ctx context.Context, tracer trace.Tracer, vaultAddress *url.URL, r
 		vault.WithRequestTimeout(30*time.Second),
 	)
 	if err != nil {
+		span.SetStatus(codes.Error, "failed creating vault client")
 		return "", err
 	}
 
@@ -33,6 +35,7 @@ func GetToken(ctx context.Context, tracer trace.Tracer, vaultAddress *url.URL, r
 		},
 	)
 	if err != nil {
+		span.SetStatus(codes.Error, "failed authenticating with vault")
 		return "", err
 	}
 

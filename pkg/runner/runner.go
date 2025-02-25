@@ -9,6 +9,7 @@ import (
 
 	"github.com/gentoomaniac/run-puppet/pkg/puppet"
 	"github.com/gentoomaniac/run-puppet/pkg/vault"
+	"go.opentelemetry.io/otel/codes"
 
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -129,7 +130,7 @@ func New(opts ...RunPuppetOption) RunPuppet {
 	}
 }
 
-func (r *RunPuppet) Run() int {
+func (r *RunPuppet) Run() (int, error) {
 	ctx, span := r.options.tracer.Start(r.options.ctx, "runner.Run()")
 	defer span.End()
 
@@ -140,21 +141,24 @@ func (r *RunPuppet) Run() int {
 	if r.options.clone {
 		err := cloneRepo(ctx, r.options.tracer, r.options.localRepoPath, r.options.remoteRepoUrl, r.options.puppetBranch)
 		if err != nil {
+			span.SetStatus(codes.Error, "failed cloning repo")
 			log.Error().Err(err).Msg("failed cloning puppet repo")
-			return -1
+			return -1, err
 		}
 	}
 
 	vaultToken := getVaultToken(ctx, r.options.tracer, r.options.vaultUrl, r.options.vaultRoleIdFile, r.options.vaultSecretIdFile)
 
 	code, err := puppet.RunPuppetApply(ctx, r.options.tracer, r.options.binPath, r.options.localRepoPath, vaultToken, r.options.noop, !r.options.now)
-	span.SetAttributes(attribute.Int("puppetReturnCode", code))
 	if err != nil {
+		span.SetStatus(codes.Error, "failed reading vault SecretID")
 		log.Error().Err(err).Msg("executing puppet failed")
-		return -1
+		return -1, err
 	}
 
-	return code
+	span.SetStatus(codes.Ok, "puppet run finished")
+
+	return code, nil
 }
 
 func getVaultToken(ctx context.Context, tracer trace.Tracer, vaultUrl *url.URL, appIdFile *os.File, secretIdFile *os.File) string {
@@ -166,17 +170,22 @@ func getVaultToken(ctx context.Context, tracer trace.Tracer, vaultUrl *url.URL, 
 	appId := make([]byte, vaultIdByteSize)
 	_, err := appIdFile.Read(appId)
 	if err != nil {
-		log.Panic().Err(err).Msg("faild reading vault AppID")
+		span.SetStatus(codes.Error, "failed reading vault AppID")
+		log.Panic().Err(err).Msg("failed reading vault AppID")
 	}
 	secretId := make([]byte, vaultIdByteSize)
 	_, err = secretIdFile.Read(secretId)
 	if err != nil {
-		log.Panic().Err(err).Msg("faild reading vault SecretID")
+		span.SetStatus(codes.Error, "failed reading vault SecretID")
+		log.Panic().Err(err).Msg("failed reading vault SecretID")
 	}
 	vaultToken, err := vault.GetToken(ctx, tracer, vaultUrl, string(appId), string(secretId))
 	if err != nil {
-		log.Panic().Err(err).Msg("faild getting vault token")
+		span.SetStatus(codes.Error, "failed getting vault token")
+		log.Panic().Err(err).Msg("failed getting vault token")
 	}
+
+	span.SetStatus(codes.Ok, "got vault token")
 
 	return vaultToken
 }
@@ -188,6 +197,7 @@ func delay(ctx context.Context, tracer trace.Tracer) {
 	delay := time.Duration(rand.IntN(5)) * time.Second
 	span.SetAttributes(attribute.Int("delaySeconds", int(delay.Seconds())))
 	time.Sleep(delay)
+	span.SetStatus(codes.Ok, "delay finished")
 }
 
 func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remoteUrl *url.URL, branch string) error {
@@ -197,6 +207,7 @@ func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remot
 	span.SetAttributes(attribute.String("gitBranch", branch))
 
 	if err := os.RemoveAll(localPath); err != nil {
+		span.SetStatus(codes.Error, "failed removing local copy")
 		return err
 	}
 
@@ -208,8 +219,11 @@ func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remot
 		ReferenceName: plumbing.NewBranchReferenceName(branch),
 	})
 	if err != nil {
+		span.SetStatus(codes.Error, "clone repo failed")
 		return err
 	}
+
+	span.SetStatus(codes.Ok, "clone repo finished")
 
 	return nil
 }

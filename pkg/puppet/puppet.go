@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -35,10 +36,12 @@ func RunPuppetApply(ctx context.Context, tracer trace.Tracer, binPath string, ma
 	err := cmd.Run()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
+			span.SetStatus(codes.Error, "executing puppet failed")
 			return exitErr.ExitCode(), nil
 		}
 		return -1, err
 	}
 
+	span.SetStatus(codes.Ok, "executing puppet succeeded")
 	return 0, nil
 }

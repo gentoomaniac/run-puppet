@@ -15,6 +15,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -128,6 +129,11 @@ func main() {
 		runner.WithSecretIdFile(cli.SecretIdFile),
 	)
 
-	code := rp.Run()
+	code, err := rp.Run()
+	if err != nil {
+		span.SetStatus(codes.Error, "finished with error")
+	} else {
+		span.SetStatus(codes.Ok, "finished")
+	}
 	kctx.Exit(code)
 }

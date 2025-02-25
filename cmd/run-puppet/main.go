@@ -9,7 +9,7 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/rs/zerolog/log"
 
-	"github.com/gentoomaniac/run-puppet/pkg/cli"
+	gocli "github.com/gentoomaniac/run-puppet/pkg/cli"
 	"github.com/gentoomaniac/run-puppet/pkg/logging"
 	"github.com/gentoomaniac/run-puppet/pkg/runner"
 

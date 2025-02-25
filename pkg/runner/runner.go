@@ -148,6 +148,7 @@ func (r *RunPuppet) Run() int {
 	vaultToken := getVaultToken(ctx, r.options.tracer, r.options.vaultUrl, r.options.vaultRoleIdFile, r.options.vaultSecretIdFile)
 
 	code, err := puppet.RunPuppetApply(ctx, r.options.tracer, r.options.binPath, r.options.localRepoPath, vaultToken, r.options.noop, !r.options.now)
+	span.SetAttributes(attribute.Int("puppetReturnCode", code))
 	if err != nil {
 		log.Error().Err(err).Msg("executing puppet failed")
 		return -1
@@ -158,8 +159,8 @@ func (r *RunPuppet) Run() int {
 
 func getVaultToken(ctx context.Context, tracer trace.Tracer, vaultUrl *url.URL, appIdFile *os.File, secretIdFile *os.File) string {
 	ctx, span := tracer.Start(ctx, "runner.getVaultToken()")
-	span.SetAttributes(attribute.String("appIdFile", appIdFile.Name()))
-	span.SetAttributes(attribute.String("secretIdFile", secretIdFile.Name()))
+	span.SetAttributes(attribute.String("vaultAppIdFile", appIdFile.Name()))
+	span.SetAttributes(attribute.String("vaultSecretIdFile", secretIdFile.Name()))
 	defer span.End()
 
 	appId := make([]byte, vaultIdByteSize)
@@ -185,14 +186,15 @@ func delay(ctx context.Context, tracer trace.Tracer) {
 	defer span.End()
 
 	delay := time.Duration(rand.IntN(5)) * time.Second
-	span.SetAttributes(attribute.Int("secondsDelay", int(delay.Seconds())))
+	span.SetAttributes(attribute.Int("delaySeconds", int(delay.Seconds())))
 	time.Sleep(delay)
 }
 
 func cloneRepo(ctx context.Context, tracer trace.Tracer, localPath string, remoteUrl *url.URL, branch string) error {
 	_, span := tracer.Start(ctx, "runner.cloneRepo()")
 	defer span.End()
-	span.SetAttributes(attribute.String("remoteUrl", remoteUrl.String()))
+	span.SetAttributes(attribute.String("gitRemoteUrl", remoteUrl.String()))
+	span.SetAttributes(attribute.String("gitBranch", branch))
 
 	if err := os.RemoveAll(localPath); err != nil {
 		return err

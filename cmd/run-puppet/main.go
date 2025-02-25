@@ -45,7 +45,7 @@ var cli struct {
 	Now   bool `help:"skip the random delay" default:"false"`
 	Noop  bool `short:"n" help:"don't apply puppet changes" default:"false"`
 
-	OtelEndpointUrl *url.URL `help:"OTEl endpoint to send traces to" default:"http://tempo.srv.gentoomaniac.net:4318"`
+	OtelEndpointUrl *url.URL `help:"OTEL endpoint to send traces to" default:"https://otelcol.srv.gentoomaniac.net:4318"`
 
 	Version gocli.VersionFlag `short:"V" help:"Display version."`
 }

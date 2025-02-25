@@ -39,5 +39,6 @@ func GetToken(ctx context.Context, tracer trace.Tracer, vaultAddress *url.URL, r
 		return "", err
 	}
 
+	span.SetStatus(codes.Ok, "")
 	return resp.Auth.ClientToken, nil
 }

@@ -36,9 +36,10 @@ func RunPuppetApply(ctx context.Context, tracer trace.Tracer, binPath string, ma
 	err := cmd.Run()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			span.SetStatus(codes.Error, "executing puppet failed")
+			span.SetStatus(codes.Ok, "executing puppet succeeded with non zero exit code")
 			return exitErr.ExitCode(), nil
 		}
+		span.SetStatus(codes.Error, "parsing error failed")
 		return -1, err
 	}
 

@@ -8,7 +8,7 @@ require (
 	github.com/alecthomas/kong v1.8.1
 	github.com/go-git/go-git/v5 v5.13.2
 	github.com/hashicorp/vault-client-go v0.4.3
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/zerolog v1.34.0
 	go.opentelemetry.io/otel v1.34.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.34.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.34.0

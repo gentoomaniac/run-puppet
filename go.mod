@@ -2,10 +2,10 @@ module github.com/gentoomaniac/run-puppet
 
 go 1.22.0
 
-toolchain go1.22.5
+toolchain go1.24.1
 
 require (
-	github.com/alecthomas/kong v1.8.1
+	github.com/alecthomas/kong v1.10.0
 	github.com/go-git/go-git/v5 v5.13.2
 	github.com/hashicorp/vault-client-go v0.4.3
 	github.com/rs/zerolog v1.33.0

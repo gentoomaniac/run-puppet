@@ -1,5 +1,5 @@
 pkgname=run-puppet
-pkgver=0.1.6
+pkgver=0.1.7
 pkgrel=1
 pkgdesc="Wrapper to run puppet in my homelab"
 arch=('x86_64')

@@ -11,6 +11,7 @@ import (
 
 	gocli "github.com/gentoomaniac/run-puppet/pkg/cli"
 	"github.com/gentoomaniac/run-puppet/pkg/logging"
+	"github.com/gentoomaniac/run-puppet/pkg/metrics"
 	"github.com/gentoomaniac/run-puppet/pkg/runner"
 
 	"go.opentelemetry.io/otel"
@@ -47,6 +48,7 @@ var cli struct {
 	Noop  bool `short:"n" help:"don't apply puppet changes" default:"false"`
 
 	OtelEndpointUrl *url.URL `help:"OTEL endpoint to send traces to" default:"https://otelcol.srv.gentoomaniac.net:4318"`
+	PushgatewayUrl  string   `help:"Prometheus pushgateway to push run metrics to (empty to disable)" default:"https://pushgateway.srv.gentoomaniac.net"`
 
 	Version gocli.VersionFlag `short:"V" help:"Display version."`
 }
@@ -60,6 +62,7 @@ func main() {
 		"date":    date,
 	})
 
+	runStart := time.Now()
 	logging.Setup(&cli.LoggingConfig)
 
 	ctx := context.Background()
@@ -101,8 +104,20 @@ func main() {
 	ctx, span := tracer.Start(context.Background(), "run-puppet")
 	defer span.End()
 
+	var runMetrics *metrics.Metrics
+	if cli.PushgatewayUrl != "" {
+		runMetrics = metrics.New()
+	}
+
 	kctx.Exit = func(code int) {
 		span.SetAttributes(attribute.Int("exitCode", code))
+		runMetrics.SetExitCode(code)
+		runMetrics.ObserveRun(runStart)
+		pushCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		if err := runMetrics.Push(pushCtx, cli.PushgatewayUrl, hostname); err != nil {
+			log.Warn().Err(err).Str("url", cli.PushgatewayUrl).Msg("failed pushing metrics")
+		}
+		cancel()
 		span.End()
 		tracerProvider.Shutdown(ctx)
 		os.Exit(code)
@@ -124,6 +139,7 @@ func main() {
 		runner.WithNoop(cli.Noop),
 		runner.WithContext(ctx),
 		runner.WithTracer(tracer),
+		runner.WithMetrics(runMetrics),
 		runner.WithVaultUrl(cli.VaultUrl),
 		runner.WithRoleIdFile(cli.RoleIdFile),
 		runner.WithSecretIdFile(cli.SecretIdFile),

@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gentoomaniac/run-puppet/pkg/metrics"
 	"github.com/gentoomaniac/run-puppet/pkg/puppet"
 	"github.com/gentoomaniac/run-puppet/pkg/vault"
 	"go.opentelemetry.io/otel/codes"
@@ -40,6 +41,7 @@ type runPuppetOptions struct {
 	noop              bool
 	ctx               context.Context
 	tracer            trace.Tracer
+	metrics           *metrics.Metrics
 }
 
 type RunPuppetOption func(o *runPuppetOptions)
@@ -98,6 +100,12 @@ func WithTracer(tracer trace.Tracer) RunPuppetOption {
 	}
 }
 
+func WithMetrics(m *metrics.Metrics) RunPuppetOption {
+	return func(o *runPuppetOptions) {
+		o.metrics = m
+	}
+}
+
 func WithVaultUrl(url *url.URL) RunPuppetOption {
 	return func(o *runPuppetOptions) {
 		o.vaultUrl = url
@@ -140,17 +148,21 @@ func (r *RunPuppet) Run() (int, error) {
 	}
 
 	if r.options.clone {
+		cloneStart := time.Now()
 		err := cloneRepo(ctx, r.options.tracer, r.options.localRepoPath, r.options.remoteRepoUrl, r.options.puppetBranch)
 		if err != nil {
 			span.SetStatus(codes.Error, "failed cloning repo")
 			log.Error().Err(err).Msg("failed cloning puppet repo")
 			return -1, err
 		}
+		r.options.metrics.ObserveClone(cloneStart)
 	}
 
 	vaultToken := getVaultToken(ctx, r.options.tracer, r.options.vaultUrl, r.options.vaultRoleIdFile, r.options.vaultSecretIdFile)
 
+	puppetStart := time.Now()
 	code, err := puppet.RunPuppetApply(ctx, r.options.tracer, r.options.binPath, r.options.localRepoPath, vaultToken, r.options.noop, !r.options.now)
+	r.options.metrics.ObservePuppet(puppetStart)
 	if err != nil {
 		span.SetStatus(codes.Error, "failed reading vault SecretID")
 		log.Error().Err(err).Msg("executing puppet failed")

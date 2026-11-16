@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -32,6 +33,11 @@ var (
 	date    = "unknown"
 )
 
+const (
+	puppetBranchFile    = "/etc/puppet_branch"
+	defaultPuppetBranch = "main"
+)
+
 var cli struct {
 	logging.LoggingConfig
 
@@ -41,7 +47,7 @@ var cli struct {
 	VaultUrl      *url.URL `help:"url of the vault instance" default:"https://vault.srv.gentoomaniac.net"`
 	RoleIdFile    *os.File `help:"path to the vault approle app id file" default:"/etc/vault_role_id"`
 	SecretIdFile  *os.File `help:"path to the vault approle secret id file" default:"/etc/vault_secret_id"`
-	PuppetBranch  string   `help:"puppet branch to use" default:"master"`
+	PuppetBranch  string   `help:"puppet branch to use (default: content of /etc/puppet_branch, else main)"`
 
 	Clone bool `help:"do a fresh clone of the manifest repository" default:"true" negatable:""`
 	Now   bool `help:"skip the random delay" default:"false"`
@@ -129,6 +135,11 @@ func main() {
 		span.SetAttributes(attribute.Bool("puppetDisabled", true))
 	}
 
+	if cli.PuppetBranch == "" {
+		cli.PuppetBranch = branchFromFile(puppetBranchFile, defaultPuppetBranch)
+	}
+	span.SetAttributes(attribute.String("puppetBranch", cli.PuppetBranch))
+
 	rp := runner.New(
 		runner.WithBinPath(cli.BinPath),
 		runner.WithLocalRepoPath(cli.LocalRepoPath),
@@ -152,4 +163,22 @@ func main() {
 		span.SetStatus(codes.Ok, "finished")
 	}
 	kctx.Exit(code)
+}
+
+// branchFromFile returns the trimmed content of path, or fallback if the file
+// can't be read or is empty.
+func branchFromFile(path, fallback string) string {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Warn().Err(err).Str("path", path).Msg("failed reading puppet branch file")
+		}
+		return fallback
+	}
+	branch := strings.TrimSpace(string(content))
+	if branch == "" {
+		return fallback
+	}
+	log.Debug().Str("path", path).Str("branch", branch).Msg("using puppet branch from file")
+	return branch
 }

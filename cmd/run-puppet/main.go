@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -41,7 +42,7 @@ var cli struct {
 	VaultUrl      *url.URL `help:"url of the vault instance" default:"https://vault.srv.gentoomaniac.net"`
 	RoleIdFile    *os.File `help:"path to the vault approle app id file" default:"/etc/vault_role_id"`
 	SecretIdFile  *os.File `help:"path to the vault approle secret id file" default:"/etc/vault_secret_id"`
-	PuppetBranch  string   `help:"puppet branch to use" default:"master"`
+	PuppetBranch  string   `help:"puppet branch to use (read from /etc/puppet_branch if it exists)" default:"main"`
 
 	Clone bool `help:"do a fresh clone of the manifest repository" default:"true" negatable:""`
 	Now   bool `help:"skip the random delay" default:"false"`
@@ -54,7 +55,7 @@ var cli struct {
 }
 
 func main() {
-	kctx := kong.Parse(&cli, kong.UsageOnError(), kong.Vars{
+	kctx := kong.Parse(&cli, kong.UsageOnError(), kong.Resolvers(fileResolver("puppet-branch", "/etc/puppet_branch")), kong.Vars{
 		"version": version,
 		"commit":  commit,
 		"binName": binName,
@@ -152,4 +153,26 @@ func main() {
 		span.SetStatus(codes.Ok, "finished")
 	}
 	kctx.Exit(code)
+}
+
+// fileResolver resolves the flag flagName from the trimmed content of path.
+// A missing or empty file resolves nothing, so the flag's default applies.
+// The command line still overrides the file.
+func fileResolver(flagName, path string) kong.ResolverFunc {
+	return func(_ *kong.Context, _ *kong.Path, flag *kong.Flag) (any, error) {
+		if flag.Name != flagName {
+			return nil, nil
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				log.Warn().Err(err).Str("path", path).Msg("failed reading flag value file")
+			}
+			return nil, nil
+		}
+		if value := strings.TrimSpace(string(content)); value != "" {
+			return value, nil
+		}
+		return nil, nil
+	}
 }

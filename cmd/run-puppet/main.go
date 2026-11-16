@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -157,18 +158,19 @@ func main() {
 
 // fileResolver resolves the flag flagName from the trimmed content of path.
 // A missing or empty file resolves nothing, so the flag's default applies.
-// The command line still overrides the file.
+// Any other read error fails parsing. The command line still overrides the
+// file, and the file isn't read then.
 func fileResolver(flagName, path string) kong.ResolverFunc {
 	return func(_ *kong.Context, _ *kong.Path, flag *kong.Flag) (any, error) {
 		if flag.Name != flagName {
 			return nil, nil
 		}
 		content, err := os.ReadFile(path)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				log.Warn().Err(err).Str("path", path).Msg("failed reading flag value file")
-			}
+		if os.IsNotExist(err) {
 			return nil, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("reading --%s from %s: %w", flagName, path, err)
 		}
 		if value := strings.TrimSpace(string(content)); value != "" {
 			return value, nil

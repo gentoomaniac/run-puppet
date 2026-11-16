@@ -1,5 +1,5 @@
 pkgname=run-puppet
-pkgver=0.1.8
+pkgver=0.1.9
 pkgrel=1
 pkgdesc="Wrapper to run puppet in my homelab"
 arch=('x86_64')
@@ -9,7 +9,7 @@ options=('!debug')
 
 # Point this to where your GoReleaser uploads the tarball
 source=("${pkgname}::${url}/releases/download/v${pkgver}/${pkgname}_${pkgver}_linux-amd64")
-sha256sums=('7804f72f379ef53b9a460b84adb68050266f2a51caae45d2df89c1972080df88')
+sha256sums=('b2033be1592e3d9d1f9c22d3f1bc9bfe0525ee86e6d3c02de6f272be982c9365')
 
 package() {
   # GoReleaser usually puts the binary in the root of the tarball

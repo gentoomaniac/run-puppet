@@ -37,7 +37,7 @@ var (
 var cli struct {
 	logging.LoggingConfig
 
-	BinPath       string   `help:"Path to puppet binary" default:"/usr/bin/puppet"`
+	BinPath       *os.File `help:"Path to puppet binary" default:"/usr/bin/puppet"`
 	LocalRepoPath string   `help:"local path for the checked out puppet manifests" default:"/var/lib/puppet-repo"`
 	RemoteRepoUrl *url.URL `help:"puppet repository to use" default:"https://github.com/gentoomaniac/puppet.git"`
 	VaultUrl      *url.URL `help:"url of the vault instance" default:"https://vault.srv.gentoomaniac.net"`
@@ -132,7 +132,7 @@ func main() {
 	}
 
 	rp := runner.New(
-		runner.WithBinPath(cli.BinPath),
+		runner.WithBinFile(cli.BinPath),
 		runner.WithLocalRepoPath(cli.LocalRepoPath),
 		runner.WithRemoteRepoUrl(cli.RemoteRepoUrl),
 		runner.WithPuppetBranch(cli.PuppetBranch),

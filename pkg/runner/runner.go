@@ -29,7 +29,7 @@ type RunPuppet struct {
 }
 
 type runPuppetOptions struct {
-	binPath           string
+	binFile           *os.File
 	localRepoPath     string
 	remoteRepoUrl     *url.URL
 	vaultUrl          *url.URL
@@ -46,9 +46,9 @@ type runPuppetOptions struct {
 
 type RunPuppetOption func(o *runPuppetOptions)
 
-func WithBinPath(path string) RunPuppetOption {
+func WithBinFile(file *os.File) RunPuppetOption {
 	return func(o *runPuppetOptions) {
-		o.binPath = path
+		o.binFile = file
 	}
 }
 
@@ -161,7 +161,7 @@ func (r *RunPuppet) Run() (int, error) {
 	vaultToken := getVaultToken(ctx, r.options.tracer, r.options.vaultUrl, r.options.vaultRoleIdFile, r.options.vaultSecretIdFile)
 
 	puppetStart := time.Now()
-	code, err := puppet.RunPuppetApply(ctx, r.options.tracer, r.options.binPath, r.options.localRepoPath, vaultToken, r.options.noop, !r.options.now)
+	code, err := puppet.RunPuppetApply(ctx, r.options.tracer, r.options.binFile.Name(), r.options.localRepoPath, vaultToken, r.options.noop, !r.options.now)
 	r.options.metrics.ObservePuppet(puppetStart)
 	if err != nil {
 		span.SetStatus(codes.Error, "failed reading vault SecretID")

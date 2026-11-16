@@ -49,7 +49,8 @@ var cli struct {
 	Now   bool `help:"skip the random delay" default:"false"`
 	Noop  bool `short:"n" help:"don't apply puppet changes" default:"false"`
 
-	OtelEndpointUrl *url.URL `help:"OTEL endpoint to send traces to" default:"https://otelcol.srv.gentoomaniac.net:4318"`
+	// the full URL incl. /v1/traces: otlptracehttp.WithEndpointURL sends to the URL's path as is
+	OtelEndpointUrl *url.URL `help:"OTLP/HTTP traces URL, including the /v1/traces path" default:"https://otelcol.srv.gentoomaniac.net:4318/v1/traces"`
 	PushgatewayUrl  string   `help:"Prometheus pushgateway to push run metrics to (empty to disable)" default:"https://pushgateway.srv.gentoomaniac.net"`
 
 	Version gocli.VersionFlag `short:"V" help:"Display version."`
